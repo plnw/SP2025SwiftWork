@@ -1,0 +1,1 @@
+chrome.action.onClicked.addListener(e=>{e.id&&chrome.tabs.sendMessage(e.id,{action:"toggleSidebar"})});chrome.runtime.onMessage.addListener((e,s,n)=>{if(e.action==="analyzeProduct"){const i=e.payload,r={scores:{title:i.title?90:0,description:i.description?85:0,price:i.price?"OK":"Missing"},suggestions:['เพิ่ม keyword "freelance"',"ปรับราคาสมเหตุสมผล"]};n(r)}return!0});
