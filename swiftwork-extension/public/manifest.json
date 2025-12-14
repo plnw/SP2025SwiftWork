@@ -1,0 +1,49 @@
+{
+    "manifest_version": 3,
+    "name": "SwiftWork AI Optimizer",
+    "version": "1.0.0",
+    "description": "AI-powered assistant for optimizing Fastwork product listings",
+    "permissions": [
+        "activeTab",
+        "scripting",
+        "storage"
+    ],
+    "host_permissions": [
+        "*://seller.fastwork.co/*"
+    ],
+    "background": {
+        "service_worker": "background.js",
+        "type": "module"
+    },
+    "action": {
+        "default_title": "SwiftWork Optimizer",
+        "default_icon": {
+            "16": "icons/Swiftwork-icon.png",
+            "48": "icons/Swiftwork-icon.png",
+            "128": "icons/Swiftwork-icon.png"
+        }
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "*://seller.fastwork.co/product/*"
+            ],
+            "js": [
+                "content.js"
+            ],
+            "run_at": "document_idle"
+        }
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "icons/*",
+                "assets/*",
+                "chunks/*"
+            ],
+            "matches": [
+                "<all_urls>"
+            ]
+        }
+    ]
+}
