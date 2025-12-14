@@ -106,7 +106,7 @@ http://localhost:8000
 
 ---
 
-##  How It Works Together
+###  How It Works Together
 
 1. Chrome Extension collects product data from Fastwork
 2. Extension sends data to Backend API
@@ -116,7 +116,7 @@ http://localhost:8000
 
 ---
 
-## ⚠️ Important Notes
+###  Important Notes
 
 * Run **backend first**, then use the extension
 * Frontend and backend run separately
