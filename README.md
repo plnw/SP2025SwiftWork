@@ -21,7 +21,7 @@ root/
 
 ## 1️ swiftwork-extension (Chrome Extension)
 
-📄 Detailed documentation: 👉 [`swiftwork-backend/README.md`](./swiftwork-extension/README.md)
+Detailed documentation: 👉 [`swiftwork-backend/README.md`](./swiftwork-extension/README.md)
 
 
 ### Features
@@ -57,7 +57,7 @@ npm run build
 
 ## 2️ swiftwork-backend (AI Optimizer API)
 
-📄 Detailed documentation: 👉 [`swiftwork-backend/README.md`](./swiftwork-backend/README.md)
+Detailed documentation: 👉 [`swiftwork-backend/README.md`](./swiftwork-backend/README.md)
 
 ### Features
 
