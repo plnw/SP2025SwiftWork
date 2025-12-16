@@ -17,57 +17,88 @@ const Sidebar: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [overallScore, setOverallScore] = useState(85);
 
-  useEffect(() => {
-    createHighlightElements();
+  const handleURLChange = React.useCallback(() => {
+    removeHighlight();
     setCurrentTopicFromURL();
+  }, [topics]);
 
-    // เรียก API ครั้งแรกเมื่อโหลด
-    handleAnalyzeProduct();
+  useEffect(() => {
+      createHighlightElements();
+      setCurrentTopicFromURL();
 
-    // Watch form changes
-    watchFormChanges((formData) => {
-      console.log('Form data changed:', formData);
-      // อาจจะเรียก API อีกครั้งหรือรอให้ user กด "วิเคราะห์ใหม่"
+      handleAnalyzeProduct();
+
+      watchFormChanges((formData) => {
+        console.log('Form data changed:', formData);
+      });
+
+      const pushState = history.pushState;
+      const replaceState = history.replaceState;
+
+      history.pushState = function (...args) {
+        const result = pushState.apply(this, args);
+        handleURLChange();
+        return result;
+      };
+
+      history.replaceState = function (...args) {
+        const result = replaceState.apply(this, args);
+        handleURLChange();
+        return result;
+      };
+
+      window.addEventListener('popstate', handleURLChange);
+
+      return () => {
+        window.removeEventListener('popstate', handleURLChange);
+      };
+    }, []);
+
+  useEffect(() => {
+    if (currentTopicIndex > -1) return;
+    setCurrentTopicFromURL();
+  }, [topics]);
+
+  useEffect(() => {
+    let lastUrl = window.location.href;
+
+    const observer = new MutationObserver(() => {
+      const currentUrl = window.location.href;
+      if (currentUrl !== lastUrl) {
+        lastUrl = currentUrl;
+        console.log('Detected URL change:', currentUrl);
+        removeHighlight();
+        setCurrentTopicFromURL();
+      }
     });
 
-    const handleURLChange = () => {
-      setCurrentTopicFromURL();
-      removeHighlight();
-    };
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
 
-    // Detect URL changes
-    const pushState = history.pushState;
-    const replaceState = history.replaceState;
-
-    history.pushState = function (...args) {
-      const result = pushState.apply(this, args);
-      handleURLChange();
-      return result;
-    };
-
-    history.replaceState = function (...args) {
-      const result = replaceState.apply(this, args);
-      handleURLChange();
-      return result;
-    };
-
-    window.addEventListener('popstate', handleURLChange);
-
-    return () => {
-      window.removeEventListener('popstate', handleURLChange);
-    };
-  }, []);
+    return () => observer.disconnect();
+  }, [topics]);
 
   const setCurrentTopicFromURL = () => {
-    const path = window.location.pathname;
-    const topicName = PAGE_TOPIC_MAP[path];
+    const url = window.location.pathname + window.location.search;
 
-    if (topicName) {
-      const index = TOPICS.findIndex(t => t.name === topicName);
-      setCurrentTopicIndex(index);
-    } else {
-      setCurrentTopicIndex(-1);
+    const matchedEntry = Object.entries(PAGE_TOPIC_MAP).find(
+      ([pagePath]) => url.includes(pagePath)
+    );
+
+    if (matchedEntry) {
+      const [, topicName] = matchedEntry;
+
+      const index = topics.findIndex(t => t.name === topicName);
+
+      if (index !== -1) {
+        setCurrentTopicIndex(index);
+        return;
+      }
     }
+
+    setCurrentTopicIndex(-1);
   };
 
   const handleClose = () => {

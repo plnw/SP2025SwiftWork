@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import Header from './Header';
 import { PAGE_TOPIC_MAP } from '../utils/topics';
 import { Topic } from '../types';
-import { highlightElement } from '../utils/highlighter';
+import { highlightElement, removeHighlight } from '../utils/highlighter';
 
 interface DetailViewProps {
   topicIndex: number;
@@ -26,10 +26,18 @@ const DetailView: React.FC<DetailViewProps> = ({
   const topic = topics[topicIndex];
 
   useEffect(() => {
-    if (topic?.selector && isCorrectPage(topic)) {
+    removeHighlight();
+
+    if (!topic?.selector) return;
+
+    if (isMainPage()) {
       highlightElement(topic.selector);
     }
-  }, [topic]);
+  }, [topicIndex]);
+
+  const isMainPage = () => {
+    return window.location.pathname.startsWith("/product/basic-info");
+  };
 
   const isCorrectPage = (t: Topic): boolean => {
     const restrictedTopics = [
