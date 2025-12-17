@@ -45,10 +45,13 @@ export function extractFormData(): FastworkFormData {
     }
   }
 
-  // ดึง cover image (ถ้ามี)
-  const coverImageInput = document.querySelector<HTMLInputElement>('input[id="cover-image"]');
-  if (coverImageInput && coverImageInput.files && coverImageInput.files.length > 0) {
-    data.cover_image = 'uploaded'; // บอกว่ามีรูป
+  // ดึง cover image จาก preview (Fastwork ใช้ preview)
+  const coverPreviewImg = document.querySelector(
+    "div:has(> input[id='cover-image']) img"
+  );
+
+  if (coverPreviewImg) {
+    data.cover_image = 'uploaded';
   }
 
   // ดึง tags (ถ้ามี)
