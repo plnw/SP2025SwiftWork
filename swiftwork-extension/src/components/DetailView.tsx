@@ -55,21 +55,15 @@ const DetailView: React.FC<DetailViewProps> = ({
   }, [topic]);
 
   const isCorrectPage = (t: Topic): boolean => {
-    const restrictedTopics = [
-      "เพิ่มการมองเห็นของการ์ดงาน",
-      "ข้อมูลแพ็กเกจ",
-      "อัลบั้มผลงาน"
-    ];
-
     const path = window.location.pathname;
-    const isSpecificPage = PAGE_TOPIC_MAP.hasOwnProperty(path);
 
-    if (isSpecificPage) {
+    if (PAGE_TOPIC_MAP[path]) {
       return PAGE_TOPIC_MAP[path] === t.name;
     }
 
-    return !restrictedTopics.includes(t.name);
+    return true;
   };
+
 
   const handlePrev = () => {
     const newIndex = (topicIndex - 1 + topics.length) % topics.length;
