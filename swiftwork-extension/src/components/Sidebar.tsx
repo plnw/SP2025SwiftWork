@@ -13,9 +13,17 @@ const Sidebar: React.FC = () => {
   const [currentFilter, setCurrentFilter] = useState<FilterType>('all');
   const [currentTopicIndex, setCurrentTopicIndex] = useState<number>(-1);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [topics, setTopics] = useState<Topic[]>(TOPICS);
   const [isLoading, setIsLoading] = useState(false);
   const [overallScore, setOverallScore] = useState(85);
+  const [hasAnalyzed, setHasAnalyzed] = useState(false);
+  const [currentFormData, setCurrentFormData] = useState<any>(null);
+  const [topics, setTopics] = useState<Topic[]>(
+    TOPICS.map(t => ({
+      ...t,
+      score: 0,
+      status: 'fail'
+    }))
+  );
 
   const handleURLChange = React.useCallback(() => {
     removeHighlight();
@@ -26,10 +34,8 @@ const Sidebar: React.FC = () => {
       createHighlightElements();
       setCurrentTopicFromURL();
 
-      handleAnalyzeProduct();
-
       watchFormChanges((formData) => {
-        console.log('Form data changed:', formData);
+        setCurrentFormData(formData);
       });
 
       const pushState = history.pushState;
@@ -55,9 +61,10 @@ const Sidebar: React.FC = () => {
     }, []);
 
   useEffect(() => {
+    if (!hasAnalyzed) return;
     if (currentTopicIndex > -1) return;
     setCurrentTopicFromURL();
-  }, [topics]);
+  }, [topics, hasAnalyzed]);
 
   useEffect(() => {
     let lastUrl = window.location.href;
@@ -119,35 +126,103 @@ const Sidebar: React.FC = () => {
     setCurrentTopicIndex(-1);
   };
 
-  const handleAnalyzeProduct = async () => {
+  const hasCoverImageInDOM = (): boolean => {
+    return Boolean(
+      document.querySelector(
+        'img[src*="fastwork"], img[src*="cloudfront"], img[src*="storage"]'
+      )
+    );
+  };
+
+  const hasDataForTopic = (topicName: string, formData: any): boolean => {
+    switch (topicName) {
+      case 'ภาพปกงาน':
+        return hasCoverImageInDOM();
+
+      case 'ชื่องาน':
+        return Boolean(formData.title?.trim());
+
+      case 'หมวดหมู่':
+        return Boolean(formData.category);
+
+      case 'ราคาเริ่มต้น':
+        return Boolean(formData.price);
+
+      default:
+        return true;
+    }
+  };
+
+
+  const FORM_BASED_TOPICS = [
+    'ภาพปกงาน',
+    'ชื่องาน',
+    'หมวดหมู่',
+    'ราคาเริ่มต้น'
+  ];
+
+  const isFormBasedTopic = (topicName: string) =>
+    FORM_BASED_TOPICS.includes(topicName);
+
+  const handleAnalyzeProduct = async (targetTopicName?: string) => {
     setIsLoading(true);
     try {
       const formData = extractFormData();
+      setCurrentFormData(formData);
       const result = await analyzeProduct(formData);
 
-      // อัปเดต topics จาก API response
-      const updatedTopics = result.topics.map(apiTopic => {
-        const existingTopic = TOPICS.find(t => t.name === apiTopic.name);
+      const updatedTopics = topics.map(existingTopic => {
+        // วิเคราะห์หัวข้อเดียว
+        if (targetTopicName && existingTopic.name !== targetTopicName) {
+          return existingTopic;
+        }
+
+        // ❗ Analyze All → ข้ามหัวข้อเฉพาะ
+        if (!targetTopicName && !isFormBasedTopic(existingTopic.name)) {
+          return existingTopic;
+        }
+
+        const apiTopic = result.topics.find(
+          t => t.name === existingTopic.name
+        );
+
+        // ไม่มีข้อมูลจริง → fail
+        if (!hasDataForTopic(existingTopic.name, formData)) {
+          return {
+            ...existingTopic,
+            status: 'fail' as Topic['status'],
+            score: 0
+          };
+        }
+
+        if (!apiTopic) {
+          return existingTopic;
+        }
+
         return {
           ...existingTopic,
-          ...apiTopic,
-          selector: existingTopic?.selector
-        } as Topic;
+          status: apiTopic.status as Topic['status'],
+          score: apiTopic.score,
+          selector: existingTopic.selector
+        };
       });
 
       setTopics(updatedTopics);
       setOverallScore(result.overall_score);
-      console.log('✅ Analysis completed:', result);
-    } catch (error) {
-      console.error('❌ Failed to analyze:', error);
-      // ถ้า API ล้มเหลว ใช้ข้อมูลเดิม (TOPICS)
+      setHasAnalyzed(true); 
+    } catch (e) {
+      console.error(e);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleRegenerate = async () => {
+  const handleAnalyzeAll = async () => {
     await handleAnalyzeProduct();
+  };
+
+  const handleRegenerateSingle = async (topicName: string) => {
+    await handleAnalyzeProduct(topicName);
   };
 
   const sidebarStyle: React.CSSProperties = {
@@ -203,11 +278,13 @@ const Sidebar: React.FC = () => {
         <DetailView
           topicIndex={currentTopicIndex}
           topics={topics}
+          hasAnalyzed={hasAnalyzed}
+          formData={currentFormData} 
           onBack={handleBack}
           onClose={handleClose}
           onCollapse={handleCollapse}
           onNavigate={setCurrentTopicIndex}
-          onRegenerate={handleRegenerate}
+          onRegenerate={(topicName) => handleRegenerateSingle(topicName)}
         />
       ) : (
         <OverviewView
@@ -218,7 +295,7 @@ const Sidebar: React.FC = () => {
           onTopicSelect={setCurrentTopicIndex}
           onClose={handleClose}
           onCollapse={handleCollapse}
-          onRegenerate={handleRegenerate}
+          onRegenerate={handleAnalyzeAll}
           isLoading={isLoading}
         />
       )}

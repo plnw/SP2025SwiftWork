@@ -2,21 +2,25 @@ import React, { useEffect } from 'react';
 import Header from './Header';
 import { PAGE_TOPIC_MAP } from '../utils/topics';
 import { Topic } from '../types';
-import { highlightElement, removeHighlight } from '../utils/highlighter';
+import { highlightElement } from '../utils/highlighter';
 
 interface DetailViewProps {
   topicIndex: number;
   topics: Topic[];
+  hasAnalyzed: boolean;
+  formData: any;
   onBack: () => void;
   onClose: () => void;
   onCollapse: () => void;
   onNavigate: (index: number) => void;
-  onRegenerate: () => void;
+  onRegenerate: (topicName: string) => void; 
 }
 
 const DetailView: React.FC<DetailViewProps> = ({
   topicIndex,
   topics,
+  hasAnalyzed,
+  formData,
   onBack,
   onClose,
   onCollapse,
@@ -25,19 +29,30 @@ const DetailView: React.FC<DetailViewProps> = ({
 }) => {
   const topic = topics[topicIndex];
 
+  const getCurrentValue = (topicName: string) => {
+    if (!formData) return 'N/A';
+
+    switch (topicName) {
+      case 'ชื่องาน':
+        return formData.title || 'N/A';
+      case 'หมวดหมู่':
+        return formData.category || 'N/A';
+      case 'ราคาเริ่มต้น':
+        return formData.price || 'N/A';
+      default:
+        return 'N/A';
+    }
+  };
+
+  const displayStatus: Topic['status'] = hasAnalyzed
+    ? topic.status
+    : 'fail';
+
   useEffect(() => {
-    removeHighlight();
-
-    if (!topic?.selector) return;
-
-    if (isMainPage()) {
+    if (topic?.selector && isCorrectPage(topic)) {
       highlightElement(topic.selector);
     }
-  }, [topicIndex]);
-
-  const isMainPage = () => {
-    return window.location.pathname.startsWith("/product/basic-info");
-  };
+  }, [topic]);
 
   const isCorrectPage = (t: Topic): boolean => {
     const restrictedTopics = [
@@ -88,7 +103,7 @@ const DetailView: React.FC<DetailViewProps> = ({
     return { icon: '✔', color: '#00BF63' };
   };
 
-  const { icon: statusIconChar, color: statusColor } = getStatusIconAndColor(topic.status);
+  const { icon: statusIconChar, color: statusColor } = getStatusIconAndColor(displayStatus);
 
   if (!isCorrectPage(topic)) {
     return (
@@ -130,11 +145,16 @@ const DetailView: React.FC<DetailViewProps> = ({
           onNext={handleNext}
         />
         
-        {topic.status === 'pass' && <PassContent topic={topic} />}
-        {topic.status === 'suggest' && <SuggestContent topic={topic} />}
-        {topic.status === 'fail' && <FailContent topic={topic} />}
+        {displayStatus === 'pass' && <PassContent topic={topic} />}
+        {displayStatus === 'suggest' && (
+          <SuggestContent
+            topic={topic}
+            currentValue={getCurrentValue(topic.name)}
+          />
+        )}
+        {displayStatus === 'fail' && <FailContent topic={topic} />}
 
-        <ActionButtons topic={topic} onApply={handleApplySuggestion} onRegenerate={onRegenerate} />
+        <ActionButtons status={displayStatus} onApply={handleApplySuggestion} onRegenerate={() => onRegenerate(topic.name)} />
       </div>
     </>
   );
@@ -221,12 +241,12 @@ const PassContent: React.FC<{ topic: Topic }> = ({ topic }) => (
   </>
 );
 
-const SuggestContent: React.FC<{ topic: Topic }> = ({ topic }) => (
+const SuggestContent: React.FC<{ topic: Topic; currentValue: string; }> = ({ topic, currentValue}) => (
   <>
     <div style={{ ...infoBoxStyle, background: 'white' }}>
       <div style={{ fontSize: '14px', color: '#888' }}>ปัจจุบัน:</div>
       <div style={{ fontSize: '13px', color: '#333', marginTop: '4px' }}>
-        {topic.details?.current || 'N/A'}
+        {currentValue}
       </div>
     </div>
     <div style={{ ...infoBoxStyle, background: '#E6F0FF' }}>
@@ -278,9 +298,9 @@ const FailContent: React.FC<{ topic: Topic }> = ({ topic }) => (
   </>
 );
 
-const ActionButtons: React.FC<{ topic: Topic; onApply: () => void; onRegenerate: () => void }> = ({ topic, onApply, onRegenerate }) => (
+const ActionButtons: React.FC<{status: Topic['status']; onApply: () => void; onRegenerate: () => void }> = ({ status, onApply, onRegenerate }) => (
   <div style={{ marginTop: '24px' }}>
-    {topic.status === 'suggest' ? (
+    {status === 'suggest' ? (
       <div style={{ display: 'flex', gap: '10px' }}>
         <button onClick={onApply} style={{ ...buttonStyle, background: '#FF9F00', flex: 1 }}>
           ใช้คำแนะนำนี้
