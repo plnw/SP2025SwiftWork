@@ -14,7 +14,7 @@ const Sidebar: React.FC = () => {
   const [currentTopicIndex, setCurrentTopicIndex] = useState<number>(-1);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [overallScore, setOverallScore] = useState(85);
+  const [overallScore, setOverallScore] = useState(0);
   const [hasAnalyzed, setHasAnalyzed] = useState(false);
   const [currentFormData, setCurrentFormData] = useState<any>(null);
   const [topics, setTopics] = useState<Topic[]>(
@@ -171,15 +171,17 @@ const Sidebar: React.FC = () => {
       setCurrentFormData(formData);
       const result = await analyzeProduct(formData);
 
-      const updatedTopics = topics.map(existingTopic => {
-        // วิเคราะห์หัวข้อเดียว
+      const updatedTopics: Topic[] = topics.map(existingTopic => {
         if (targetTopicName && existingTopic.name !== targetTopicName) {
           return existingTopic;
         }
 
-        // ❗ Analyze All → ข้ามหัวข้อเฉพาะ
         if (!targetTopicName && !isFormBasedTopic(existingTopic.name)) {
-          return existingTopic;
+          return {
+            ...existingTopic,
+            status: 'fail',
+            score: 0
+          };
         }
 
         const apiTopic = result.topics.find(
@@ -208,7 +210,13 @@ const Sidebar: React.FC = () => {
       });
 
       setTopics(updatedTopics);
-      setOverallScore(result.overall_score);
+      const calculatedOverall =
+        updatedTopics.every(t => t.status === 'fail')
+          ? 0
+          : result.overall_score;
+
+      setOverallScore(calculatedOverall);
+
       setHasAnalyzed(true); 
     } catch (e) {
       console.error(e);

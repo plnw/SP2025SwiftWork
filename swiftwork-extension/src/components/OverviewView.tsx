@@ -32,7 +32,6 @@ const OverviewView: React.FC<OverviewViewProps> = ({
     : topics.filter(t => t.status === currentFilter);
 
   const circumference = 2 * Math.PI * 15.9155;
-  const progress = (overallScore / 100) * circumference;
 
   return (
     <>
@@ -58,22 +57,33 @@ const OverviewView: React.FC<OverviewViewProps> = ({
           </div>
         </div>
         <div style={{ width: '80px', height: '80px', position: 'relative' }}>
-          <svg viewBox="0 0 36 36" style={{ transform: 'rotate(-90deg)', width: '100%', height: '100%' }}>
-            <path
-              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-              fill="none"
-              stroke="#ddd"
-              strokeWidth="3.5"
-            />
-            <path
-              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+          <svg viewBox="0 0 36 36" style={{ width: '100%', height: '100%' }}>
+          {/* background circle */}
+          <circle
+            cx="18"
+            cy="18"
+            r="15.9155"
+            fill="none"
+            stroke="#ddd"
+            strokeWidth="3.5"
+          />
+
+          {/* progress circle */}
+          {overallScore > 0 && (
+            <circle
+              cx="18"
+              cy="18"
+              r="15.9155"
               fill="none"
               stroke="#ffb74d"
               strokeWidth="3.5"
-              strokeDasharray={`${progress},${circumference}`}
+              strokeDasharray={`${circumference}`}
+              strokeDashoffset={circumference * (1 - overallScore / 100)}
               strokeLinecap="round"
+              transform="rotate(-90 18 18)"
             />
-          </svg>
+          )}
+        </svg>
           <div
             style={{
               position: 'absolute',
