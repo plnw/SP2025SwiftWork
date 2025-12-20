@@ -1,8 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Header from './Header';
 import { PAGE_TOPIC_MAP } from '../utils/topics';
 import { Topic } from '../types';
 import { highlightElement } from '../utils/highlighter';
+import TopicCard from './TopicCard';
 
 interface DetailViewProps {
   topicIndex: number;
@@ -13,7 +14,7 @@ interface DetailViewProps {
   onClose: () => void;
   onCollapse: () => void;
   onNavigate: (index: number) => void;
-  onRegenerate: (topicName: string) => void; 
+  onRegenerate: (topicName: string) => void;
 }
 
 const DetailView: React.FC<DetailViewProps> = ({
@@ -28,6 +29,7 @@ const DetailView: React.FC<DetailViewProps> = ({
   onRegenerate
 }) => {
   const topic = topics[topicIndex];
+  const [expandedCard, setExpandedCard] = useState<string | null>(null);
 
   const getCurrentValue = (topicName: string) => {
     if (!formData) return 'N/A';
@@ -49,7 +51,7 @@ const DetailView: React.FC<DetailViewProps> = ({
     : 'fail';
 
   useEffect(() => {
-    if (topic?.selector && isCorrectPage(topic)) {
+    if (topic?.selector) {
       highlightElement(topic.selector);
     }
   }, [topic]);
@@ -57,8 +59,16 @@ const DetailView: React.FC<DetailViewProps> = ({
   const isCorrectPage = (t: Topic): boolean => {
     const path = window.location.pathname;
 
+    // 1. ถ้าอยู่หน้าที่มีการระบุเฉพาะ (เช่น /product/searchable-info)
     if (PAGE_TOPIC_MAP[path]) {
       return PAGE_TOPIC_MAP[path] === t.name;
+    }
+
+    // 2. ถ้าอยู่หน้าทั่วไป (เช่น /product/basic-info)
+    // ต้องเช็คว่า Topic นี้เป็น Topic ที่ต้องไปหน้าเฉพาะหรือไม่
+    const restrictedTopics = Object.values(PAGE_TOPIC_MAP);
+    if (restrictedTopics.includes(t.name)) {
+      return false;
     }
 
     return true;
@@ -127,6 +137,312 @@ const DetailView: React.FC<DetailViewProps> = ({
     );
   }
 
+  // Special view for "Searchable Info"
+  if (topic.name === "เพิ่มการมองเห็นของการ์ดงาน") {
+    const descriptionTopic: Topic = {
+      ...topic,
+      name: "คำอธิบาย",
+      emoji: "📝",
+      status: formData?.description ? 'suggest' : 'fail',
+      score: 0, // Placeholder
+      selector: 'textarea[name="description"]'
+    };
+
+    const tagsTopic: Topic = {
+      ...topic,
+      name: "Tags",
+      emoji: "🏷️",
+      status: formData?.tags && formData.tags.length > 0 ? 'suggest' : 'fail',
+      score: 0, // Placeholder
+      // Try to target the visible container for React Select or the input itself
+      selector: '#searchable-info-form .css-19bb58m, .css-1rhbuit-multiValue, .css-1g6gooi, input[name="tags"], div[class*="select__control"]'
+    };
+
+    const toggleExpand = (cardName: string) => {
+      setExpandedCard(expandedCard === cardName ? null : cardName);
+    };
+
+    const handleCardClick = (subTopic: Topic, cardName: string) => {
+      toggleExpand(cardName);
+      if (subTopic.selector) {
+        highlightElement(subTopic.selector);
+      }
+    };
+
+    return (
+      <>
+        <Header onClose={onClose} onCollapse={onCollapse} showBack onBack={onBack} />
+        <div style={{ background: '#F7F9FC', padding: '16px' }}>
+          <TopicHeader
+            topic={topic}
+            statusIconChar={statusIconChar}
+            statusColor={statusColor}
+            onPrev={handlePrev}
+            onNext={handleNext}
+          />
+
+          <TopicCard
+            topic={descriptionTopic}
+            onClick={() => handleCardClick(descriptionTopic, 'description')}
+            isExpanded={expandedCard === 'description'}
+            showArrow
+            style={{ marginBottom: '8px' }}
+          >
+            {descriptionTopic.status === 'fail' ? (
+              <FailContent topic={descriptionTopic} onRegenerate={() => onRegenerate(topic.name)} />
+            ) : (
+              <SuggestContent
+                topic={descriptionTopic}
+                currentValue={formData?.description || '-'}
+                onApply={handleApplySuggestion}
+                onRegenerate={() => onRegenerate(topic.name)}
+              />
+            )}
+          </TopicCard>
+
+          <TopicCard
+            topic={tagsTopic}
+            onClick={() => handleCardClick(tagsTopic, 'tags')}
+            isExpanded={expandedCard === 'tags'}
+            showArrow
+            style={{ marginBottom: '8px' }}
+          >
+            {tagsTopic.status === 'fail' ? (
+              <FailContent topic={tagsTopic} onRegenerate={() => onRegenerate(topic.name)} />
+            ) : (
+              <SuggestContent
+                topic={tagsTopic}
+                currentValue={formData?.tags?.join(', ') || '-'}
+                onApply={handleApplySuggestion}
+                onRegenerate={() => onRegenerate(topic.name)}
+              />
+            )}
+          </TopicCard>
+
+          {/* Suggestion Section */}
+          <div style={{ ...infoBoxStyle, background: '#fff4e5', marginTop: '16px' }}>
+            <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#ff9800', marginBottom: '8px' }}>
+              💡 คำแนะนำ:
+            </div>
+            <p style={{ fontSize: '13px', color: '#555', margin: 0 }}>
+              {topic.details?.suggestion || 'ควรใส่คำค้นหาที่เกี่ยวข้องเพื่อให้ลูกค้าหาเจอได้ง่ายขึ้น'}
+            </p>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // Special view for "Package Info"
+  if (topic.name === "ข้อมูลแพ็กเกจ") {
+    const priceTopic: Topic = {
+      ...topic,
+      name: "ราคาเริ่มต้น",
+      emoji: "💲",
+      status: formData?.price ? 'suggest' : 'fail',
+      score: 0,
+      selector: 'input[name="price"]'
+    };
+
+    const durationTopic: Topic = {
+      ...topic,
+      name: "ระยะเวลาในการทำงาน",
+      emoji: "⏱️",
+      status: formData?.duration && parseInt(formData.duration) > 0 ? 'suggest' : 'fail',
+      score: 0,
+      selector: 'input[name="delivery_times"], input[placeholder*="ระยะเวลา"]'
+    };
+
+    const toggleExpand = (cardName: string) => {
+      setExpandedCard(expandedCard === cardName ? null : cardName);
+    };
+
+    const handleCardClick = (subTopic: Topic, cardName: string) => {
+      toggleExpand(cardName);
+      if (subTopic.selector) {
+        highlightElement(subTopic.selector);
+      }
+    };
+
+    return (
+      <>
+        <Header onClose={onClose} onCollapse={onCollapse} showBack onBack={onBack} />
+        <div style={{ background: '#F7F9FC', padding: '16px' }}>
+          <TopicHeader
+            topic={topic}
+            statusIconChar={statusIconChar}
+            statusColor={statusColor}
+            onPrev={handlePrev}
+            onNext={handleNext}
+          />
+
+          {formData?.packageName && (
+            <div style={{
+              marginBottom: '12px',
+              padding: '8px 12px',
+              background: '#e3f2fd',
+              borderRadius: '8px',
+              color: '#0277bd',
+              fontWeight: 'bold',
+              fontSize: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <span>📦</span>
+              <span>แพ็กเกจ: {formData.packageName}</span>
+            </div>
+          )}
+
+          <TopicCard
+            topic={priceTopic}
+            onClick={() => handleCardClick(priceTopic, 'price')}
+            isExpanded={expandedCard === 'price'}
+            showArrow
+            style={{ marginBottom: '8px' }}
+          >
+            {priceTopic.status === 'fail' ? (
+              <FailContent topic={priceTopic} onRegenerate={() => onRegenerate(topic.name)} />
+            ) : (
+              <SuggestContent
+                topic={priceTopic}
+                currentValue={formData?.price ? `${formData.price} บาท` : '-'}
+                onApply={handleApplySuggestion}
+                onRegenerate={() => onRegenerate(topic.name)}
+              />
+            )}
+          </TopicCard>
+
+          <TopicCard
+            topic={durationTopic}
+            onClick={() => handleCardClick(durationTopic, 'duration')}
+            isExpanded={expandedCard === 'duration'}
+            showArrow
+            style={{ marginBottom: '8px' }}
+          >
+            {durationTopic.status === 'fail' ? (
+              <FailContent topic={durationTopic} onRegenerate={() => onRegenerate(topic.name)} />
+            ) : (
+              <SuggestContent
+                topic={durationTopic}
+                currentValue={formData?.duration ? `${formData.duration} วัน` : '-'}
+                onApply={handleApplySuggestion}
+                onRegenerate={() => onRegenerate(topic.name)}
+              />
+            )}
+          </TopicCard>
+
+          {/* Suggestion Section */}
+          <div style={{ ...infoBoxStyle, background: '#fff4e5', marginTop: '16px' }}>
+            <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#ff9800', marginBottom: '8px' }}>
+              💡 คำแนะนำ:
+            </div>
+            <p style={{ fontSize: '13px', color: '#555', margin: 0 }}>
+              {topic.details?.suggestion || 'ควรระบุรายละเอียดแพ็กเกจให้ครบถ้วนเพื่อความชัดเจน'}
+            </p>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // Special view for "Portfolio Info"
+  if (topic.name === "อัลบั้มผลงาน") {
+    const albumTopic: Topic = {
+      ...topic,
+      name: "อัลบั้มผลงาน",
+      emoji: "🖼️",
+      status: formData?.album_images && formData.album_images.length > 0 ? 'suggest' : 'fail',
+      score: 0,
+      // Target the upload area or gallery container
+      selector: '#__next .Style_card-content__A9xM_, div[class*="gallery"], .album-item, div[class*="upload"], input[type="file"]'
+    };
+
+    const videoTopic: Topic = {
+      ...topic,
+      name: "วิดีโอผลงาน",
+      emoji: "🎥",
+      status: formData?.video ? 'suggest' : 'fail',
+      score: 0,
+      // Target video input container or input itself
+      selector: 'input[type="url"], #__next .trb-input, input[name="video_url"], input[name="video"], input[placeholder*="YouTube"], input[placeholder*="Link"]'
+    };
+
+    const toggleExpand = (cardName: string) => {
+      setExpandedCard(expandedCard === cardName ? null : cardName);
+    };
+
+    const handleCardClick = (subTopic: Topic, cardName: string) => {
+      toggleExpand(cardName);
+      if (subTopic.selector) {
+        highlightElement(subTopic.selector);
+      }
+    };
+
+    return (
+      <>
+        <Header onClose={onClose} onCollapse={onCollapse} showBack onBack={onBack} />
+        <div style={{ background: '#F7F9FC', padding: '16px' }}>
+          <TopicHeader
+            topic={topic}
+            statusIconChar={statusIconChar}
+            statusColor={statusColor}
+            onPrev={handlePrev}
+            onNext={handleNext}
+          />
+
+          <TopicCard
+            topic={albumTopic}
+            onClick={() => handleCardClick(albumTopic, 'album')}
+            isExpanded={expandedCard === 'album'}
+            showArrow
+            style={{ marginBottom: '8px' }}
+          >
+            {albumTopic.status === 'fail' ? (
+              <FailContent topic={albumTopic} onRegenerate={() => onRegenerate(topic.name)} />
+            ) : (
+              <SuggestContent
+                topic={albumTopic}
+                currentValue={formData?.album_images ? `${formData.album_images.length} รูป` : '-'}
+                onApply={handleApplySuggestion}
+                onRegenerate={() => onRegenerate(topic.name)}
+              />
+            )}
+          </TopicCard>
+
+          <TopicCard
+            topic={videoTopic}
+            onClick={() => handleCardClick(videoTopic, 'video')}
+            isExpanded={expandedCard === 'video'}
+            showArrow
+            style={{ marginBottom: '8px' }}
+          >
+            {videoTopic.status === 'fail' ? (
+              <FailContent topic={videoTopic} onRegenerate={() => onRegenerate(topic.name)} />
+            ) : (
+              <SuggestContent
+                topic={videoTopic}
+                currentValue={formData?.video ? 'มีวิดีโอแล้ว' : '-'}
+                onApply={handleApplySuggestion}
+                onRegenerate={() => onRegenerate(topic.name)}
+              />
+            )}
+          </TopicCard>
+
+          {/* Suggestion Section */}
+          <div style={{ ...infoBoxStyle, background: '#fff4e5', marginTop: '16px' }}>
+            <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#ff9800', marginBottom: '8px' }}>
+              💡 คำแนะนำ:
+            </div>
+            <p style={{ fontSize: '13px', color: '#555', margin: 0 }}>
+              {topic.details?.suggestion || 'การมีรูปภาพและวิดีโอประกอบจะช่วยเพิ่มความน่าเชื่อถือ'}
+            </p>
+          </div>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <Header onClose={onClose} onCollapse={onCollapse} showBack onBack={onBack} />
@@ -138,17 +454,17 @@ const DetailView: React.FC<DetailViewProps> = ({
           onPrev={handlePrev}
           onNext={handleNext}
         />
-        
-        {displayStatus === 'pass' && <PassContent topic={topic} />}
+
+        {displayStatus === 'pass' && <PassContent topic={topic} onRegenerate={() => onRegenerate(topic.name)} />}
         {displayStatus === 'suggest' && (
           <SuggestContent
             topic={topic}
             currentValue={getCurrentValue(topic.name)}
+            onApply={handleApplySuggestion}
+            onRegenerate={() => onRegenerate(topic.name)}
           />
         )}
-        {displayStatus === 'fail' && <FailContent topic={topic} />}
-
-        <ActionButtons status={displayStatus} onApply={handleApplySuggestion} onRegenerate={() => onRegenerate(topic.name)} />
+        {displayStatus === 'fail' && <FailContent topic={topic} onRegenerate={() => onRegenerate(topic.name)} />}
       </div>
     </>
   );
@@ -211,7 +527,7 @@ const TopicHeader: React.FC<{
   </div>
 );
 
-const PassContent: React.FC<{ topic: Topic }> = ({ topic }) => (
+const PassContent: React.FC<{ topic: Topic; onRegenerate: () => void }> = ({ topic, onRegenerate }) => (
   <>
     <div style={{ textAlign: 'center', padding: '20px' }}>
       <div style={statusBadgeStyle('#00BF63')}>✔</div>
@@ -232,10 +548,15 @@ const PassContent: React.FC<{ topic: Topic }> = ({ topic }) => (
         </ul>
       </div>
     )}
+    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
+      <button onClick={onRegenerate} style={{ ...buttonStyle, background: '#035db9' }}>
+        วิเคราะห์ใหม่
+      </button>
+    </div>
   </>
 );
 
-const SuggestContent: React.FC<{ topic: Topic; currentValue: string; }> = ({ topic, currentValue}) => (
+const SuggestContent: React.FC<{ topic: Topic; currentValue: string; onApply?: () => void; onRegenerate: () => void }> = ({ topic, currentValue, onApply, onRegenerate }) => (
   <>
     <div style={{ ...infoBoxStyle, background: 'white' }}>
       <div style={{ fontSize: '14px', color: '#888' }}>ปัจจุบัน:</div>
@@ -267,10 +588,20 @@ const SuggestContent: React.FC<{ topic: Topic; currentValue: string; }> = ({ top
         {topic.details?.aiFix || 'N/A'}
       </div>
     </div>
+    <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+      {onApply && (
+        <button onClick={onApply} style={{ ...buttonStyle, background: '#FF9F00', flex: 1 }}>
+          ใช้คำแนะนำนี้
+        </button>
+      )}
+      <button onClick={onRegenerate} style={{ ...buttonStyle, background: '#035DB9', flex: 1 }}>
+        วิเคราะห์ใหม่
+      </button>
+    </div>
   </>
 );
 
-const FailContent: React.FC<{ topic: Topic }> = ({ topic }) => (
+const FailContent: React.FC<{ topic: Topic; onRegenerate: () => void }> = ({ topic, onRegenerate }) => (
   <>
     <div style={{ textAlign: 'center', padding: '20px' }}>
       <div style={statusBadgeStyle('#F25849')}>✖</div>
@@ -289,28 +620,12 @@ const FailContent: React.FC<{ topic: Topic }> = ({ topic }) => (
         {(topic.details?.fail || ['ไม่มีข้อมูล']).map((item, i) => <li key={i}>{item}</li>)}
       </ul>
     </div>
+    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
+      <button onClick={onRegenerate} style={{ ...buttonStyle, background: '#035db9' }}>
+        วิเคราะห์ใหม่
+      </button>
+    </div>
   </>
-);
-
-const ActionButtons: React.FC<{status: Topic['status']; onApply: () => void; onRegenerate: () => void }> = ({ status, onApply, onRegenerate }) => (
-  <div style={{ marginTop: '24px' }}>
-    {status === 'suggest' ? (
-      <div style={{ display: 'flex', gap: '10px' }}>
-        <button onClick={onApply} style={{ ...buttonStyle, background: '#FF9F00', flex: 1 }}>
-          ใช้คำแนะนำนี้
-        </button>
-        <button onClick={onRegenerate} style={{ ...buttonStyle, background: '#035DB9', flex: 1 }}>
-          วิเคราะห์ใหม่
-        </button>
-      </div>
-    ) : (
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <button onClick={onRegenerate} style={{ ...buttonStyle, background: '#035db9' }}>
-          วิเคราะห์ใหม่
-        </button>
-      </div>
-    )}
-  </div>
 );
 
 // Styles

@@ -27,8 +27,8 @@ const OverviewView: React.FC<OverviewViewProps> = ({
   onRegenerate,
   isLoading
 }) => {
-  const visibleTopics = currentFilter === 'all' 
-    ? topics 
+  const visibleTopics = currentFilter === 'all'
+    ? topics
     : topics.filter(t => t.status === currentFilter);
 
   const circumference = 2 * Math.PI * 15.9155;
@@ -58,32 +58,32 @@ const OverviewView: React.FC<OverviewViewProps> = ({
         </div>
         <div style={{ width: '80px', height: '80px', position: 'relative' }}>
           <svg viewBox="0 0 36 36" style={{ width: '100%', height: '100%' }}>
-          {/* background circle */}
-          <circle
-            cx="18"
-            cy="18"
-            r="15.9155"
-            fill="none"
-            stroke="#ddd"
-            strokeWidth="3.5"
-          />
-
-          {/* progress circle */}
-          {overallScore > 0 && (
+            {/* background circle */}
             <circle
               cx="18"
               cy="18"
               r="15.9155"
               fill="none"
-              stroke="#ffb74d"
+              stroke="#ddd"
               strokeWidth="3.5"
-              strokeDasharray={`${circumference}`}
-              strokeDashoffset={circumference * (1 - overallScore / 100)}
-              strokeLinecap="round"
-              transform="rotate(-90 18 18)"
             />
-          )}
-        </svg>
+
+            {/* progress circle */}
+            {overallScore > 0 && (
+              <circle
+                cx="18"
+                cy="18"
+                r="15.9155"
+                fill="none"
+                stroke="#ffb74d"
+                strokeWidth="3.5"
+                strokeDasharray={`${circumference}`}
+                strokeDashoffset={circumference * (1 - overallScore / 100)}
+                strokeLinecap="round"
+                transform="rotate(-90 18 18)"
+              />
+            )}
+          </svg>
           <div
             style={{
               position: 'absolute',
@@ -104,7 +104,7 @@ const OverviewView: React.FC<OverviewViewProps> = ({
       <FilterButtons currentFilter={currentFilter} onFilterChange={onFilterChange} />
 
       {/* Topic Cards */}
-      <section style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <section style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {isLoading ? (
           <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
             <div style={{ fontSize: '24px', marginBottom: '8px' }}>⏳</div>
