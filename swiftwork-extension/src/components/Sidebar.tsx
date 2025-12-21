@@ -31,34 +31,34 @@ const Sidebar: React.FC = () => {
   }, [topics]);
 
   useEffect(() => {
-      createHighlightElements();
-      setCurrentTopicFromURL();
+    createHighlightElements();
+    setCurrentTopicFromURL();
 
-      watchFormChanges((formData) => {
-        setCurrentFormData(formData);
-      });
+    watchFormChanges((formData) => {
+      setCurrentFormData(formData);
+    });
 
-      const pushState = history.pushState;
-      const replaceState = history.replaceState;
+    const pushState = history.pushState;
+    const replaceState = history.replaceState;
 
-      history.pushState = function (...args) {
-        const result = pushState.apply(this, args);
-        handleURLChange();
-        return result;
-      };
+    history.pushState = function (...args) {
+      const result = pushState.apply(this, args);
+      handleURLChange();
+      return result;
+    };
 
-      history.replaceState = function (...args) {
-        const result = replaceState.apply(this, args);
-        handleURLChange();
-        return result;
-      };
+    history.replaceState = function (...args) {
+      const result = replaceState.apply(this, args);
+      handleURLChange();
+      return result;
+    };
 
-      window.addEventListener('popstate', handleURLChange);
+    window.addEventListener('popstate', handleURLChange);
 
-      return () => {
-        window.removeEventListener('popstate', handleURLChange);
-      };
-    }, []);
+    return () => {
+      window.removeEventListener('popstate', handleURLChange);
+    };
+  }, []);
 
   useEffect(() => {
     if (!hasAnalyzed) return;
@@ -127,11 +127,41 @@ const Sidebar: React.FC = () => {
   };
 
   const hasCoverImageInDOM = (): boolean => {
-    return Boolean(
-      document.querySelector(
-        'img[src*="fastwork"], img[src*="cloudfront"], img[src*="storage"]'
-      )
+    // Method 1: Check for CDN images (fastwork, cloudfront, storage)
+    const cdnImages = document.querySelectorAll(
+      'img[src*="fastwork"], img[src*="cloudfront"], img[src*="storage"]'
     );
+    for (const img of cdnImages) {
+      const style = window.getComputedStyle(img);
+      // Check if it's a visible, reasonably-sized image (not an icon)
+      if (img.clientWidth > 50 && img.clientHeight > 50 && style.display !== 'none') {
+        return true;
+      }
+    }
+
+    // Method 2: Check for uploaded preview images (blob or data URLs)
+    const previewImages = document.querySelectorAll('img[src^="blob:"], img[src^="data:image"]');
+    for (const img of previewImages) {
+      const style = window.getComputedStyle(img);
+      // Check if image is visible and reasonable size
+      if (img.clientWidth > 50 && img.clientHeight > 50 && style.display !== 'none') {
+        return true;
+      }
+    }
+
+    // Method 3: Check near the cover-image input element
+    const coverInput = document.querySelector('input[id="cover-image"]');
+    if (coverInput) {
+      const parent = coverInput.parentElement;
+      if (parent) {
+        const img = parent.querySelector('img');
+        if (img && img.src && img.src.length > 0) {
+          return true;
+        }
+      }
+    }
+
+    return false;
   };
 
   const hasDataForTopic = (topicName: string, formData: any): boolean => {
@@ -147,6 +177,9 @@ const Sidebar: React.FC = () => {
 
       case 'ราคาเริ่มต้น':
         return Boolean(formData.price);
+
+      case 'อัลบั้มผลงาน':
+        return Boolean(formData.album_images && formData.album_images.length > 0);
 
       default:
         return true;
@@ -217,7 +250,7 @@ const Sidebar: React.FC = () => {
 
       setOverallScore(calculatedOverall);
 
-      setHasAnalyzed(true); 
+      setHasAnalyzed(true);
     } catch (e) {
       console.error(e);
     } finally {
@@ -287,7 +320,7 @@ const Sidebar: React.FC = () => {
           topicIndex={currentTopicIndex}
           topics={topics}
           hasAnalyzed={hasAnalyzed}
-          formData={currentFormData} 
+          formData={currentFormData}
           onBack={handleBack}
           onClose={handleClose}
           onCollapse={handleCollapse}

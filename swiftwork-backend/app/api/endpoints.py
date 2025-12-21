@@ -8,6 +8,12 @@ from app.api.schemas import (
 )
 from app.services.analyzer import analyze_product
 from app.services.suggestions import generate_suggestion
+from app.api.mock_data import (
+    get_dummy_product,
+    get_dummy_analysis,
+    get_all_dummy_products,
+    get_all_dummy_analyses
+)
 
 router = APIRouter()
 
@@ -63,3 +69,73 @@ async def regenerate_analysis(product: ProductData):
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== MOCK/DUMMY ENDPOINTS ====================
+
+@router.get("/mock/products", tags=["mock"])
+async def get_mock_products():
+    """
+    ดึงรายการ dummy products ทั้งหมดสำหรับการทดสอบ
+    """
+    return {"products": get_all_dummy_products()}
+
+
+@router.get("/mock/products/{index}", response_model=ProductData, tags=["mock"])
+async def get_mock_product(index: int = 0):
+    """
+    ดึง dummy product ตามลำดับ (index: 0, 1, 2, ...)
+    """
+    try:
+        return get_dummy_product(index)
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"Product not found: {str(e)}")
+
+
+@router.get("/mock/analyses", tags=["mock"])
+async def get_mock_analyses():
+    """
+    ดึงรายการ dummy analyses ทั้งหมดสำหรับการทดสอบ
+    """
+    return {"analyses": get_all_dummy_analyses()}
+
+
+@router.get("/mock/analyses/{index}", response_model=AnalysisResponse, tags=["mock"])
+async def get_mock_analysis(index: int = 0):
+    """
+    ดึง dummy analysis result ตามลำดับ (index: 0, 1, ...)
+    """
+    try:
+        return get_dummy_analysis(index)
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"Analysis not found: {str(e)}")
+
+
+@router.post("/mock/analyze", response_model=AnalysisResponse, tags=["mock"])
+async def mock_analyze_product_endpoint(product: ProductData):
+    """
+    POST dummy product และดึง mock analysis result แบบสุ่ม
+    ใช้สำหรับทดสอบ API integration
+    """
+    import random
+    try:
+        # ส่งกลับ analysis result สุ่ม (0 หรือ 1)
+        return get_dummy_analysis(random.randint(0, 1))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/mock/sample-product", response_model=ProductData, tags=["mock"])
+async def get_sample_product():
+    """
+    ดึง sample product ตัวอย่างสำหรับการทดสอบ (โปรดักชันแรก)
+    """
+    return get_dummy_product(0)
+
+
+@router.get("/mock/sample-analysis", response_model=AnalysisResponse, tags=["mock"])
+async def get_sample_analysis():
+    """
+    ดึง sample analysis ตัวอย่างสำหรับการทดสอบ (ผลลัพธ์แรก)
+    """
+    return get_dummy_analysis(0)
