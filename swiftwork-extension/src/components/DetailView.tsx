@@ -352,8 +352,8 @@ const DetailView: React.FC<DetailViewProps> = ({
       ...topic,
       name: "อัลบั้มผลงาน",
       emoji: "🖼️",
-      status: formData?.album_images && formData.album_images.length > 0 ? 'suggest' : 'fail',
-      score: 0,
+      status: hasAnalyzed ? topic.status : (formData?.album_images && formData.album_images.length > 0 ? 'suggest' : 'fail'),
+      score: hasAnalyzed ? topic.score : 0,
       // Target the upload area or gallery container
       selector: '#__next .Style_card-content__A9xM_, div[class*="gallery"], .album-item, div[class*="upload"], input[type="file"]'
     };
@@ -362,8 +362,8 @@ const DetailView: React.FC<DetailViewProps> = ({
       ...topic,
       name: "วิดีโอผลงาน",
       emoji: "🎥",
-      status: formData?.video ? 'suggest' : 'fail',
-      score: 0,
+      status: hasAnalyzed ? 'suggest' : (formData?.video ? 'suggest' : 'fail'),
+      score: hasAnalyzed ? 0 : 0,
       // Target video input container or input itself
       selector: 'input[type="url"], #__next .trb-input, input[name="video_url"], input[name="video"], input[placeholder*="YouTube"], input[placeholder*="Link"]'
     };

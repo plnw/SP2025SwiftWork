@@ -35,7 +35,18 @@ export function createHighlightElements() {
 }
 
 export function highlightElement(selector: string) {
-    const el = document.querySelector(selector);
+    // Try the selector as-is first
+    let el = document.querySelector(selector);
+
+    // If selector contains comma-separated alternatives, try each one
+    if (!el && selector.includes(',')) {
+        const selectors = selector.split(',').map(s => s.trim());
+        for (const sel of selectors) {
+            el = document.querySelector(sel);
+            if (el) break;
+        }
+    }
+
     const highlighter = document.getElementById('swiftwork-highlighter-box');
     if (!el || !highlighter) return;
 

@@ -119,28 +119,101 @@ export function extractFormData(): FastworkFormData {
   }
 
   // ดึงอัลบั้มรูป
-  // Strategy: Look for images in likely containers or with blob/data URLs (previews)
-  const albumSelectors = [
-    '.album-item img',
-    'div[class*="gallery"] img',
-    'div[class*="album"] img',
-    'div[class*="upload"] img',
-    'img[src^="blob:"]',
-    'img[src^="data:image"]'
-  ];
+  // Enhanced detection: Look for all images and filter by reasonable criteria
+  let albumImages: string[] = [];
 
-  const albumElements = document.querySelectorAll(albumSelectors.join(', '));
+  // Method 1: Look for images with CDN URLs (fastwork, cloudfront, storage) - best for already-uploaded images
+  const cdnAlbumImages = document.querySelectorAll<HTMLImageElement>(
+    'img[src*="fastwork"], img[src*="cloudfront"], img[src*="storage"]'
+  );
+  const coverInput = document.querySelector("input[id='cover-image']");
 
-  // Filter out small icons or non-content images if possible (optional refinement)
-  const validAlbumImages = Array.from(albumElements).filter(el => {
-    const img = el as HTMLImageElement;
-    // Skip very small images (likely icons)
-    return img.width > 50 && img.height > 50;
-  });
+  for (const img of cdnAlbumImages) {
+    const style = window.getComputedStyle(img);
+    const imgWidth = img.clientWidth || img.width || 0;
+    const imgHeight = img.clientHeight || img.height || 0;
 
-  if (validAlbumImages.length > 0) {
-    data.album_images = validAlbumImages.map(el => (el as HTMLImageElement).src);
+    // Check if it's a content image (reasonable size, visible, and not a cover image)
+    const isCoverImage = coverInput && coverInput.parentElement?.contains(img);
+
+    if (imgWidth > 40 && imgHeight > 40 && style.display !== 'none' && !isCoverImage) {
+      albumImages.push(img.src);
+    }
   }
+
+  // Method 2: Look for any img with data/blob URLs (newly uploaded images)
+  if (albumImages.length === 0) {
+    const previewImages = document.querySelectorAll<HTMLImageElement>('img[src^="blob:"], img[src^="data:image"]');
+    for (const img of previewImages) {
+      const style = window.getComputedStyle(img);
+      const imgWidth = img.clientWidth || img.width || 0;
+      const imgHeight = img.clientHeight || img.height || 0;
+
+      if (imgWidth > 40 && imgHeight > 40 && style.display !== 'none' && style.visibility !== 'hidden') {
+        albumImages.push(img.src);
+      }
+    }
+  }
+
+  // Method 3: Fallback - look for images in gallery/album/upload containers
+  if (albumImages.length === 0) {
+    const containerSelectors = [
+      'div[class*="gallery"] img',
+      'div[class*="album"] img',
+      'div[class*="upload"] img',
+      'div[class*="preview"] img',
+      'div[class*="card"] img',
+      'div[role="group"] img',
+      'section img',
+      'article img'
+    ];
+    const containerImages = document.querySelectorAll<HTMLImageElement>(containerSelectors.join(', '));
+
+    for (const img of containerImages) {
+      const style = window.getComputedStyle(img);
+      const imgWidth = img.clientWidth || img.width || 0;
+      const imgHeight = img.clientHeight || img.height || 0;
+
+      // Less restrictive filtering - just check it's not tiny and is visible
+      if (imgWidth > 40 && imgHeight > 40 && style.display !== 'none' && style.visibility !== 'hidden') {
+        albumImages.push(img.src);
+      }
+    }
+  }
+
+  // Method 4: Final fallback - get ANY image that's reasonably sized and not hidden
+  // This catches images that might be in unusual containers
+  if (albumImages.length === 0) {
+    const allImages = document.querySelectorAll<HTMLImageElement>('img');
+    for (const img of allImages) {
+      const style = window.getComputedStyle(img);
+      const imgWidth = img.clientWidth || img.width || 0;
+      const imgHeight = img.clientHeight || img.height || 0;
+      const src = img.src || '';
+
+      // Look for images that are:
+      // 1. At least 40x40 pixels
+      // 2. Visible (not hidden)
+      // 3. Have a valid src (not empty)
+      // 4. Not icons/logos (avoid very small images)
+      // 5. Not the favicon or extension assets
+      if (imgWidth > 40 && imgHeight > 40 &&
+        style.display !== 'none' &&
+        style.visibility !== 'hidden' &&
+        src &&
+        src.length > 0 &&
+        !src.includes('chrome-extension://') &&
+        !src.includes('data:image/x-icon')) {
+        albumImages.push(src);
+      }
+    }
+  }
+
+  // Remove duplicates and filter out empty strings
+  if (albumImages.length > 0) {
+    data.album_images = [...new Set(albumImages.filter(src => src.length > 0))];
+  }
+
 
   // ดึงวิดีโอ
   let videoValue: string | undefined;
@@ -199,8 +272,28 @@ export function extractFormData(): FastworkFormData {
   }
 
   // ดึงหมวดหมู่
-  const categoryElement = document.querySelector('.css-1dimb5e-singleValue');
-  if (categoryElement) {
+  // Try multiple selectors for different modes (create vs edit)
+  let categoryElement = document.querySelector('.css-1dimb5e-singleValue');
+
+  // If not found, try other possible selectors for edit mode or alternative styles
+  if (!categoryElement) {
+    categoryElement = document.querySelector('[class*="singleValue"]');
+  }
+
+  // If still not found, try to find by looking for input or select elements
+  if (!categoryElement) {
+    const categoryInput = document.querySelector<HTMLInputElement>('input[name="category"], input[placeholder*="หมวดหมู่"]');
+    if (categoryInput && categoryInput.value) {
+      const categoryText = categoryInput.value || '';
+      const parts = categoryText.split('>').map(s => s.trim());
+      if (parts.length >= 2) {
+        data.category = parts[0];
+        data.subcategory = parts[1];
+      } else {
+        data.category = categoryText;
+      }
+    }
+  } else {
     const categoryText = categoryElement.textContent || '';
     // แยก category และ subcategory
     const parts = categoryText.split('>').map(s => s.trim());
@@ -213,11 +306,46 @@ export function extractFormData(): FastworkFormData {
   }
 
   // ดึง cover image จาก preview (Fastwork ใช้ preview)
+  // Try multiple methods to detect cover image in both create and edit modes
+  let hasCoverImage = false;
+
+  // Method 1: Look for preview image near cover-image input
   const coverPreviewImg = document.querySelector(
     "div:has(> input[id='cover-image']) img"
   );
-
   if (coverPreviewImg) {
+    hasCoverImage = true;
+  }
+
+  // Method 2: Look for any img with data/blob URLs (uploaded preview)
+  if (!hasCoverImage) {
+    const previewImages = document.querySelectorAll('img[src^="blob:"], img[src^="data:image"]');
+    for (const img of previewImages) {
+      const style = window.getComputedStyle(img);
+      // Check if image is visible and not tiny (likely a real cover, not icon)
+      if (img.clientWidth > 50 && img.clientHeight > 50 && style.display !== 'none') {
+        hasCoverImage = true;
+        break;
+      }
+    }
+  }
+
+  // Method 3: Look for images with common CDN URLs (fastwork, cloudfront, storage)
+  if (!hasCoverImage) {
+    const cdnImages = document.querySelectorAll(
+      'img[src*="fastwork"], img[src*="cloudfront"], img[src*="storage"]'
+    );
+    for (const img of cdnImages) {
+      const style = window.getComputedStyle(img);
+      // Check if it looks like a cover image (reasonable size and visible)
+      if (img.clientWidth > 50 && img.clientHeight > 50 && style.display !== 'none') {
+        hasCoverImage = true;
+        break;
+      }
+    }
+  }
+
+  if (hasCoverImage) {
     data.cover_image = 'uploaded';
   }
 
