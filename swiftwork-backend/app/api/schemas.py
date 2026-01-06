@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 
 class ProductData(BaseModel):
     """ข้อมูลสินค้าที่ส่งมาจาก Extension"""
@@ -10,6 +10,8 @@ class ProductData(BaseModel):
     price: Optional[float] = None
     cover_image: Optional[str] = None
     tags: Optional[List[str]] = []
+    packages: Optional[List[Dict]] = None
+    album_images: Optional[List[str]] = None
     
 class TopicScore(BaseModel):
     """คะแนนของแต่ละหัวข้อ"""
@@ -19,10 +21,10 @@ class TopicScore(BaseModel):
     
 class TopicDetails(BaseModel):
     """รายละเอียดของหัวข้อ"""
-    current: Optional[str] = None
+    current: Optional[Any] = None
     ai_analysis: Optional[str] = None
     suggestion: Optional[str] = None
-    ai_fix: Optional[str] = None
+    ai_fix: Optional[Any] = None
     fail_steps: Optional[List[str]] = None
     pass_tips: Optional[List[str]] = None
 

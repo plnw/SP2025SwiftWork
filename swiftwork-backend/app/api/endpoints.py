@@ -6,24 +6,37 @@ from app.api.schemas import (
     TopicAnalysis,
     TopicDetails
 )
-from app.services.analyzer import analyze_product
-from app.services.suggestions import generate_suggestion
+# ❌ Comment ไว้ก่อน - จะใช้ทีหลังเมื่อมี Database
+# from app.services.analyzer import analyze_product
+# from app.services.suggestions import generate_suggestion
+
 from app.api.mock_data import (
     get_dummy_product,
     get_dummy_analysis,
     get_all_dummy_products,
-    get_all_dummy_analyses
+    get_all_dummy_analyses,
+    DUMMY_BASIC_INFO_SUGGESTIONS,
+    DUMMY_VISIBILITY_SUGGESTIONS,
+    DUMMY_PACKAGE_SUGGESTIONS,
+    DUMMY_ALBUM_SUGGESTIONS
 )
 
 router = APIRouter()
+
+# ==================== MAIN ENDPOINTS (ใช้ Mock ก่อน) ====================
 
 @router.post("/analyze", response_model=AnalysisResponse)
 async def analyze_product_endpoint(product: ProductData):
     """
     วิเคราะห์ข้อมูลสินค้าและให้คะแนน + คำแนะนำ
+    
+    ⚠️ ตอนนี้ใช้ Mock Data ก่อน
+    TODO: เปลี่ยนเป็น analyzer.py เมื่อมี Database
     """
     try:
-        result = await analyze_product(product)
+        # ใช้ Mock data แทน Logic จริงก่อน
+        import random
+        result = get_dummy_analysis(random.randint(0, 1))
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -32,13 +45,22 @@ async def analyze_product_endpoint(product: ProductData):
 async def get_suggestion(request: SuggestionRequest):
     """
     ขอคำแนะนำสำหรับหัวข้อเฉพาะ
+    
+    ⚠️ ตอนนี้ Return Mock แทน
+    TODO: เชื่อม AI ทีหลัง
     """
     try:
-        suggestion = await generate_suggestion(
-            topic=request.topic,
-            current_value=request.current_value,
-            context=request.context
-        )
+        # Return mock suggestion based on topic
+        mock_suggestions = {
+            "basic_info": DUMMY_BASIC_INFO_SUGGESTIONS,
+            "visibility": DUMMY_VISIBILITY_SUGGESTIONS,
+            "package": DUMMY_PACKAGE_SUGGESTIONS,
+            "album": DUMMY_ALBUM_SUGGESTIONS
+        }
+        
+        topic_key = request.topic.lower().replace(" ", "_")
+        suggestion = mock_suggestions.get(topic_key, "ไม่พบคำแนะนำสำหรับหัวข้อนี้")
+        
         return {"suggestion": suggestion}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -63,9 +85,13 @@ async def get_all_topics():
 async def regenerate_analysis(product: ProductData):
     """
     วิเคราะห์ใหม่ (เหมือน /analyze แต่อาจมี cache clearing)
+    
+    ⚠️ ตอนนี้ใช้ Mock Data
     """
     try:
-        result = await analyze_product(product, force_refresh=True)
+        # Return random mock analysis
+        import random
+        result = get_dummy_analysis(random.randint(0, 1))
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -139,3 +165,95 @@ async def get_sample_analysis():
     ดึง sample analysis ตัวอย่างสำหรับการทดสอบ (ผลลัพธ์แรก)
     """
     return get_dummy_analysis(0)
+
+
+# ==================== 4 SUGGESTION ENDPOINTS (Based on Architecture) ====================
+
+@router.get("/mock/suggest-basic-info", tags=["mock"])
+async def get_basic_info_suggestions():
+    """
+    1. Suggest Basic Info
+    - ชื่องาน (Title)
+    - หมวดหมู่ (Category)
+    - ราคาเริ่มต้น (Price)
+    - ภาพปกงาน (Cover Image)
+    """
+    return {
+        "section": "Basic Info",
+        "emoji": "📋",
+        "suggestions": DUMMY_BASIC_INFO_SUGGESTIONS
+    }
+
+
+@router.get("/mock/suggest-visibility", tags=["mock"])
+async def get_visibility_suggestions():
+    """
+    2. Suggest Visibility
+    - การมองเห็นของการ์ดงาน
+    - วิธีทำให้card ดูโดดเด่นขึ้น
+    - การใช้คีย์เวิร์ดในชื่องานและคำอธิบาย
+    - การใช้แท็กที่เหมาะสม
+    """
+    return {
+        "section": "Visibility",
+        "emoji": "👁️",
+        "suggestions": DUMMY_VISIBILITY_SUGGESTIONS
+    }
+
+
+@router.get("/mock/suggest-package", tags=["mock"])
+async def get_package_suggestions():
+    """
+    3. Suggest Package
+    - ข้อมูลแพ็กเกจ (Packages)
+    - ราคา delivery time
+    - สิ่งที่รวมอยู่ในแต่ละแพ็กเกจ
+    - คำอธิบาย expectation
+    """
+    return {
+        "section": "Package",
+        "emoji": "📦",
+        "suggestions": DUMMY_PACKAGE_SUGGESTIONS
+    }
+
+
+@router.get("/mock/suggest-album", tags=["mock"])
+async def get_album_suggestions():
+    """
+    4. Suggest Album
+    - อัลบั้มผลงาน (Portfolio)
+    - ตัวอย่างผลงาน
+    - การแสดงความหลากหลาย
+    - เรียงลำดับผลงาน
+    """
+    return {
+        "section": "Album / Portfolio",
+        "emoji": "📚",
+        "suggestions": DUMMY_ALBUM_SUGGESTIONS
+    }
+
+
+# ==================== FUTURE: REAL ENDPOINTS (Comment ไว้ก่อน) ====================
+"""
+เมื่อพร้อม Database + AI แล้ว ให้ Uncomment โค้ดด้านล่างนี้:
+
+@router.post("/analyze", response_model=AnalysisResponse)
+async def analyze_product_endpoint(product: ProductData):
+    try:
+        result = await analyze_product(product)  # ← ใช้ Logic จริง
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/suggest")
+async def get_suggestion(request: SuggestionRequest):
+    try:
+        suggestion = await generate_suggestion(
+            topic=request.topic,
+            current_value=request.current_value,
+            context=request.context
+        )
+        return {"suggestion": suggestion}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+"""

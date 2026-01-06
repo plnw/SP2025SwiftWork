@@ -202,7 +202,14 @@ const Sidebar: React.FC = () => {
     try {
       const formData = extractFormData();
       setCurrentFormData(formData);
+
+      // Debug: Log what data is being sent
+      console.log('📤 Sending to API:', JSON.stringify(formData, null, 2));
+
       const result = await analyzeProduct(formData);
+
+      // Debug: Log what API returned
+      console.log('📥 API Response:', JSON.stringify(result, null, 2));
 
       const updatedTopics: Topic[] = topics.map(existingTopic => {
         if (targetTopicName && existingTopic.name !== targetTopicName) {
@@ -238,6 +245,14 @@ const Sidebar: React.FC = () => {
           ...existingTopic,
           status: apiTopic.status as Topic['status'],
           score: apiTopic.score,
+          details: {
+            current: apiTopic.details?.current,
+            aiAnalysis: apiTopic.details?.ai_analysis,
+            suggestion: apiTopic.details?.suggestion,
+            aiFix: apiTopic.details?.ai_fix,
+            fail: apiTopic.details?.fail_steps,
+            passTips: apiTopic.details?.pass_tips
+          },
           selector: existingTopic.selector
         };
       });
@@ -251,8 +266,9 @@ const Sidebar: React.FC = () => {
       setOverallScore(calculatedOverall);
 
       setHasAnalyzed(true);
+      console.log('✅ Analysis complete. Overall score:', calculatedOverall);
     } catch (e) {
-      console.error(e);
+      console.error('❌ Analysis failed:', e);
     } finally {
       setIsLoading(false);
     }
